@@ -9,7 +9,7 @@ from tkinter import filedialog, messagebox
 from PIL import ImageTk, Image
 from flask import __version__
 import argparse, os, sys, platform, socket, requests, threading, time, datetime, random, easygui, plyer, textwrap, \
-    pathlib, tempfile
+    pathlib, json
 from models import gloder_lib
 from styles import button
 
@@ -33,6 +33,7 @@ class Chatroom:
         self.online = None  # True=online, None=connecting, False=offline
         self.msg_json = []
         self.listbox_ids = []
+        self.received_files = []
         self.default_filetypes = (("All files", "*.*"), ("Text files", "*.txt"))
         self.prog_ver = "1.3.0"
         self.msg_width = 84
@@ -169,13 +170,11 @@ class Chatroom:
         self.first_login = False
         self.login()
 
-    def show_msg(self, sender, time, content, file):
+    def show_msg(self, sender, time, content):
         if sender == self.username:
             text = [time]
         else:
             text = [f"{sender}   —   {time}"]
-        if file != {}:
-            text[0] += " 📄"
         for i in textwrap.wrap(content, self.msg_width - 20):
             text.append(i)
         n = 0
@@ -195,50 +194,73 @@ class Chatroom:
         self.white_line()
         self.messages.yview(tk.END)
 
+    def add_lines(self, lines, _id):
+        for n in range(0, lines):
+            self.listbox_ids.append(_id)
+
     def mk_offline_recv(self, details):
         if self.online:
             print("error: the server didn't respond correctly: " + str(details))
             self.online = False
 
+    def recv_msg(self):
+        inbox = requests.get("http://" + self.server_ip + ":" + str(self.port) + "/msg")
+        if inbox.status_code == 200:
+            if not self.online:
+                self.online = True
+            for i in inbox.json()[-20:]:
+                recv_sender = i["sender"]
+                recv_time = self.s_to_time(i["timestamp"])
+                recv_content = i["content"]
+                recv_id = i["id"]
+                recv_type = i["type"]
+                if not recv_id in self.listbox_ids:
+                    self.msg_json.append(i)
+                    if recv_type == "info":
+                        lines = 3
+                        if recv_content == "< ✔ Hello to everybody! I joined the chat >":
+                            self.show_info(
+                                recv_sender + " joined the chat on " + recv_time + ". Say hello to him!")
+                        else:
+                            self.show_info(recv_sender + " left the chat on " + recv_time)
+                    else:
+                        lines = 2
+                        if recv_sender != self.username:
+                            self.show_msg(recv_sender, recv_time, recv_content)
+                    self.add_lines(lines, recv_id)
+                    if self.already_connected and recv_sender != self.username:
+                        plyer.notification.notify(title=recv_sender, message=recv_content,
+                                                  app_icon="../img/icon.png")
+        else:
+            self.mk_offline_recv("it responded to GET /msg with a status of " + str(inbox.status_code))
+
+    def recv_files(self):
+        file_data_req = requests.get(f"http://{self.server_ip}:{str(self.port)}/file-data")
+        n = 0
+        print(file_data_req)
+        for i in file_data_req.json():
+            sender = i["sender"]
+            time = self.s_to_time(i["timestamp"])
+            filename = i["filename"]
+            if sender != self.username and not filename in self.received_files:
+                self.received_files.append(filename)
+                file_msg = {"filename": filename}
+                file_req = requests.post(f"http://{self.server_ip}:{str(self.port)}/download-file", json=file_msg)
+                file = open(f"./media/{filename}", "wb")
+                file.write(file_req.content)
+                file.close()
+                self.show_msg(sender, time, f"📄 {filename}")
+                self.add_lines(2, None)
+            n += 1
+
     def receive(self):
         while True:
             if not self.stop_thread:
                 try:
-                    inbox = requests.get("http://" + self.server_ip + ":" + str(self.port) + "/msg")
-                    if inbox.status_code == 200:
-                        if not self.online:
-                            self.online = True
-                        for i in inbox.json()[-20:]:
-                            recv_sender = i["sender"]
-                            recv_timestamp = i["timestamp"]
-                            recv_time = self.s_to_time(recv_timestamp)
-                            recv_content = i["content"]
-                            recv_id = i["id"]
-                            recv_type = i["type"]
-                            recv_file = i["file"]
-                            if not recv_id in self.listbox_ids:
-                                self.msg_json.append(i)
-                                if recv_type == "info":
-                                    lines = 3
-                                    if recv_content == "< ✔ Hello to everybody! I joined the chat >":
-                                        self.show_info(
-                                            recv_sender + " joined the chat on " + recv_time + ". Say hello to him!")
-                                    else:
-                                        self.show_info(recv_sender + " left the chat on " + recv_time)
-                                else:
-                                    lines = 2
-                                    if recv_sender != self.username:
-                                        self.show_msg(recv_sender, recv_time, recv_content, recv_file)
-                                for n in range(0, lines):
-                                    self.listbox_ids.append(recv_id)
-                                if self.already_connected:
-                                    plyer.notification.notify(title=recv_sender, message=recv_content,
-                                                              app_icon="../img/icon.png")
-                    else:
-                        self.mk_offline_recv("it responded to GET /msg with a status of " + str(inbox.status_code))
                     hb_msg = {"username": self.username}
                     hb_req = requests.post("http://" + self.server_ip + ":" + str(self.port) + "/heartbit", json=hb_msg)
-                    data = hb_req.json()
+                    self.recv_msg()
+                    self.recv_files()
                 except requests.exceptions.ConnectionError:
                     self.quit_func(err=None)
                 if not self.already_connected:
@@ -257,21 +279,18 @@ class Chatroom:
         self.messages.insert(tk.END, send_msg["content"])
         print("error: the server didn't respond correctly: " + details)
 
-    def send(self, show=True, content=None, info=False, file={}):
+    def send(self, show=True, content=None, info=False):
         timestamp = self.s_to_time(time.time())
         if content is None:
             content = self.text_input.get()
             self.text_input.delete(0, tk.END)
         if content.strip() != "":
             if info:
-                lines = 2
                 send_msg = {"sender": self.username, "content": content, "type": "info"}
             else:
-                lines = 3
                 send_msg = {"sender": self.username, "content": content, "type": "msg"}
                 if show:
-                    self.show_msg(self.username, timestamp, content, file)
-            send_msg["file"] = file
+                    self.show_msg(self.username, timestamp, content)
             try:
                 send_req = requests.post("http://" + self.server_ip + ":" + str(self.port) + "/msg", json=send_msg)
                 if show and send_req.status_code != 201:
@@ -283,17 +302,26 @@ class Chatroom:
     def attach(self):
         filename = filedialog.askopenfilename(title="Attach a file",
                                               initialdir=self.home_dir,
-                                              filetypes=self.default_filetypes
-                                              )
+                                              filetypes=self.default_filetypes)
         if filename != ():
             file = open(filename)
-            content = file.read()
+            # self.send(file={"name": filename, "content": content})
+            try:
+                attach_req = requests.post(f"http://{self.server_ip}:{str(self.port)}/upload-file",
+                                           files={"file": file, "json": (json.dumps(str({"sender": self.username, "filename": filename}))).encode("latin-1")},
+                                           data={'upload_file': filename.split("/")[-1].split("\\")[-1], 'DB': 'photcat', 'OUT': 'csv', 'SHORT':'short'})
+                if attach_req.status_code != 201:
+                    #self.mk_offline_send(f"it responded with a status of {attach_req.status_code}", attach_req)
+                    pass
+            except requests.exceptions.ConnectionError as e:
+                #self.mk_offline_send(str(e), send_msg)
+                pass
             file.close()
-            self.send(file={"name": filename, "content": content})
+
 
     def on_msg_sel(self):
         sel = self.messages.curselection()[0]
-        msg = None
+        """msg = None
         for i in self.msg_json:
             if i["id"] == self.listbox_ids[sel]:
                 msg = i
@@ -316,7 +344,8 @@ class Chatroom:
                     save_file.write(content)
                     save_file.close()
         else:
-            print("Warning: One or more messages are missing from Chatroom.msg_json or self.listbox_ids")
+            print("Warning: One or more messages are missing from Chatroom.msg_json or self.listbox_ids")"""
+
 
     def users(self):
         users_req = requests.get("http://" + self.server_ip + ":" + str(self.port) + "/users")

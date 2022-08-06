@@ -1,15 +1,20 @@
 import io
 
 from flask import Flask, request, jsonify, send_file
-import argparse, time, socket
+from werkzeug.utils import secure_filename
+import argparse, time, socket, json
 from models.message import Message
-
-app = Flask(__name__)
+from models.file import File
 
 gMessageList = []
+gFileData = []
 login_usernames = {}
 usernames = {}
 prog_ver = "3.3.0"
+
+app = Flask(__name__)
+app.config['JSON_AS_ASCII'] = False
+uploads_dir = "./uploads"
 
 
 @app.route('/access', methods=['POST'])
@@ -64,15 +69,18 @@ def msg():
     if request.method == "POST":
         data = request.get_json()
         if "sender" in data and "content" in data:
-            received_message = Message(data["sender"], data["content"], data["type"], data["file"])
+            received_message = Message(data["sender"], data["content"], data["type"])
         else:
             raise AttributeError("Send a json file with sender and content keys when using post on /msg!")
         gMessageList.append(received_message)
         if data["content"] == "> ❌ Goodbye! I left the chat <" and data["type"] == "info":
             usernames.pop(data["sender"])
+        # return json.dumps(received_message.serialize, ensure_ascii=False).encode('utf8')
         return jsonify(received_message.serialize), 201, {'Content-Type': 'application/json'}
     elif request.method == "GET":
+        # return json.dumps([str(i.serialize) for i in gMessageList], ensure_ascii=False).encode("utf8")
         return jsonify([i.serialize for i in gMessageList]), 200, {'Content-Type': 'application/json'}
+
 
 @app.route("/msg-from-id", methods=["POST"])
 def msg_from_id():
@@ -90,6 +98,40 @@ def msg_from_id():
             return jsonify({"response": "Message not found."}), 404, {'Content-Type': 'application/json'}
 
 
+@app.route("/upload-file", methods=["POST"])
+def upload_file():
+    file = request.files["file"]
+    data = dict(json.loads(request.files["json"].read().decode("latin-1")))
+    print(str(type(data)))
+    filename = secure_filename(file.filename)
+    filepath = f"{uploads_dir}/{filename}"
+    file.save(filepath)
+    #gFilenames.append(filename)
+    gFileData.append(File(data["sender"], data["filename"]))
+    return jsonify({"response": "File uploaded to the server."}), 201, {"Content-Type": "application/json"}
+
+
+"""@app.route("/filenames")
+def filenames():
+    global gFilenames
+    return jsonify({"filenames": gFilenames}), 200, {"Content-Type": "application/json"}"""
+
+
+@app.route("/download-file", methods=["POST"])
+def download_file():
+    data = request.get_json()
+    for i in gFileData:
+        if i.filename == data["filename"]:
+            return send_file(f'{uploads_dir}/{i.filename}', as_attachment=True)
+    else:
+        return jsonify({"response": "The file specified doesn't exist."}), 404, {"Content-Type": "application/json"}
+
+
+@app.route("/file-data")
+def file_data():
+    global gFileData
+    return jsonify([i.serialize for i in gFileData]), 200, {"Content-Type": "application/json"}
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="AllHands Server", usage="python3 server.py")
@@ -99,7 +141,5 @@ if __name__ == '__main__':
                         help="IP: Address the server listens to (by default the application listens to all the IPs)")
     parser.add_argument("-p", "--port", type=int, default=5000,
                         help="Port: Port the server listens at (default is 5000)")
-
     args = parser.parse_args()
-
     app.run(debug=True, host=args.ip, port=args.port)
