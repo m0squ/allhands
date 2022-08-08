@@ -50,7 +50,7 @@ class Chatroom:
         return datetime.datetime.fromtimestamp(s).strftime("%a %b %d %H:%M:%S")
 
     def quit_func(self, window=True, err=False, _exit=True, send=True, logout=True):
-        if not err:
+        if err is False:
             pass
         elif err is None:
             error_str = "Cannot establish connection."
