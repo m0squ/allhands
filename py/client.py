@@ -237,7 +237,6 @@ class Chatroom:
     def recv_files(self):
         file_data_req = requests.get(f"http://{self.server_ip}:{str(self.port)}/file-data")
         n = 0
-        print(file_data_req)
         for i in file_data_req.json():
             sender = i["sender"]
             time = self.s_to_time(i["timestamp"])
@@ -304,11 +303,11 @@ class Chatroom:
                                               initialdir=self.home_dir,
                                               filetypes=self.default_filetypes)
         if filename != ():
-            file = open(filename)
+            file = open(filename, "rb")
             # self.send(file={"name": filename, "content": content})
             try:
                 attach_req = requests.post(f"http://{self.server_ip}:{str(self.port)}/upload-file",
-                                           files={"file": file, "json": (json.dumps(str({"sender": self.username, "filename": filename}))).encode("latin-1")},
+                                           files={"file": file, "json": ('{"sender": "%s", "filename": "%s"}' % (self.username, filename.split("/")[-1].split("\\")[-1])).encode("latin-1")},
                                            data={'upload_file': filename.split("/")[-1].split("\\")[-1], 'DB': 'photcat', 'OUT': 'csv', 'SHORT':'short'})
                 if attach_req.status_code != 201:
                     #self.mk_offline_send(f"it responded with a status of {attach_req.status_code}", attach_req)

@@ -14,7 +14,7 @@ prog_ver = "3.3.0"
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
-uploads_dir = "./uploads"
+uploads_dir = "uploads"
 
 
 @app.route('/access', methods=['POST'])
@@ -101,10 +101,9 @@ def msg_from_id():
 @app.route("/upload-file", methods=["POST"])
 def upload_file():
     file = request.files["file"]
-    data = dict(json.loads(request.files["json"].read().decode("latin-1")))
-    print(str(type(data)))
-    filename = secure_filename(file.filename)
-    filepath = f"{uploads_dir}/{filename}"
+    data = json.loads(request.files["json"].read().decode("latin-1"))
+    print(str(type(data)), data)
+    filepath = f'{uploads_dir}/{data["filename"]}'
     file.save(filepath)
     #gFilenames.append(filename)
     gFileData.append(File(data["sender"], data["filename"]))
@@ -122,7 +121,7 @@ def download_file():
     data = request.get_json()
     for i in gFileData:
         if i.filename == data["filename"]:
-            return send_file(f'{uploads_dir}/{i.filename}', as_attachment=True)
+            return send_file(f'{uploads_dir}/{i.filename}', as_attachment=True, attachment_filename=i.filename)
     else:
         return jsonify({"response": "The file specified doesn't exist."}), 404, {"Content-Type": "application/json"}
 
