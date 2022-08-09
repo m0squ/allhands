@@ -1,5 +1,6 @@
 from tkinter import *
 
+
 class ToolTip(object):
 
     def __init__(self, widget):
@@ -15,7 +16,7 @@ class ToolTip(object):
             return
         x, y, cx, cy = self.widget.bbox("insert")
         x = x + self.widget.winfo_rootx() + 27
-        y = y + cy + self.widget.winfo_rooty() +27
+        y = y + cy + self.widget.winfo_rooty() + 27
         self.tipwindow = tw = Toplevel(self.widget)
         tw.wm_overrideredirect(1)
         tw.wm_geometry("+%d+%d" % (x, y))
@@ -30,11 +31,15 @@ class ToolTip(object):
         if tw:
             tw.destroy()
 
-def createToolTip(widget, text):
+
+def create_tool_tip(widget, text):
     toolTip = ToolTip(widget)
+
     def enter(event):
         toolTip.showtip(text)
+
     def leave(event):
         toolTip.hidetip()
+
     widget.bind('<Enter>', enter)
     widget.bind('<Leave>', leave)

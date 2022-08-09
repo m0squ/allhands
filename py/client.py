@@ -1,17 +1,14 @@
 # /usr/bin python3
-import re
 
 if __name__ == "__main__":
-    print("Program started. Press anytime ^C to quit. To get help about the CLI arguments, use -h or --help")
+    print("Program started. Press anytime ^C to quit. To get help about the CLI, use -h or --help")
 
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from PIL import ImageTk, Image
-from flask import __version__
 import argparse, os, sys, platform, socket, requests, threading, time, datetime, random, easygui, plyer, textwrap, \
-    pathlib, json
+    pathlib
 from models import gloder_lib
-from styles import button
+from styles import buttons
 
 
 class Chatroom:
@@ -39,6 +36,7 @@ class Chatroom:
         self.msg_width = 84
         self.window = None
         self.menubar = None
+        self.messages = None
         self.text_input = None
         self.login_win = None
         self.username_entry = None
@@ -157,10 +155,10 @@ class Chatroom:
             self.port_entry.delete(0, tk.END)
             self.port_entry.insert(0, self.port)
             self.port_entry.grid(sticky="we", padx=10)
-            btn_login = tk.Button(master=self.login_win, text="OK", command=self.check_username, relief=tk.FLAT,
+            """btn_login = tk.Button(master=self.login_win, text="OK", command=self.check_username, relief=tk.FLAT,
                                   font=("Noto Sans", 10), highlightbackground="grey", activebackground="orange",
-                                  highlightthickness=1)
-            btn_login.grid(pady=10, sticky="we", padx=10)
+                                  highlightthickness=1)"""
+            buttons.Button(master=self.login_win, text="OK", command=self.check_username).grid(pady=10, sticky="we", padx=10)
             self.login_win.bind("<Return>", lambda x: self.check_username())
             self.login_win.mainloop()
         except AttributeError:
@@ -307,16 +305,17 @@ class Chatroom:
             # self.send(file={"name": filename, "content": content})
             try:
                 attach_req = requests.post(f"http://{self.server_ip}:{str(self.port)}/upload-file",
-                                           files={"file": file, "json": ('{"sender": "%s", "filename": "%s"}' % (self.username, filename.split("/")[-1].split("\\")[-1])).encode("latin-1")},
-                                           data={'upload_file': filename.split("/")[-1].split("\\")[-1], 'DB': 'photcat', 'OUT': 'csv', 'SHORT':'short'})
+                                           files={"file": file, "json": ('{"sender": "%s", "filename": "%s"}' % (
+                                           self.username, filename.split("/")[-1].split("\\")[-1])).encode("latin-1")},
+                                           data={'upload_file': filename.split("/")[-1].split("\\")[-1],
+                                                 'DB': 'photcat', 'OUT': 'csv', 'SHORT': 'short'})
                 if attach_req.status_code != 201:
-                    #self.mk_offline_send(f"it responded with a status of {attach_req.status_code}", attach_req)
+                    # self.mk_offline_send(f"it responded with a status of {attach_req.status_code}", attach_req)
                     pass
             except requests.exceptions.ConnectionError as e:
-                #self.mk_offline_send(str(e), send_msg)
+                # self.mk_offline_send(str(e), send_msg)
                 pass
             file.close()
-
 
     def on_msg_sel(self):
         sel = self.messages.curselection()[0]
@@ -344,7 +343,6 @@ class Chatroom:
                     save_file.close()
         else:
             print("Warning: One or more messages are missing from Chatroom.msg_json or self.listbox_ids")"""
-
 
     def users(self):
         users_req = requests.get("http://" + self.server_ip + ":" + str(self.port) + "/users")
@@ -413,8 +411,8 @@ Python: {sys.version.split()[0]}""")
         img_label.photo = img
         img_label.grid(row=0, column=0, padx=5)
         frm_about = tk.Frame(about_win, background="white")
-        description = tk.Label(frm_about, text=f"""Chat the best you can with the new visual
-improvements of AllHands {self.prog_ver}!
+        description = tk.Label(frm_about, text=f"""Chat the best you can with the new AllHands {self.prog_ver}
+file sharing system!
 Made with <3 by the What-do-I-know Company""", background="white", font=("Noto Sans", 10))
         description.pack()
         links = [("GUI inspiration 🔗", "https://www.dev.to/zeyu2001/build-a-chatroom-app-with-python-44fa"), (
@@ -425,7 +423,7 @@ Made with <3 by the What-do-I-know Company""", background="white", font=("Noto S
                      "https://anzeljg.github.io/rin2/book2/2405/docs/tkinter/cursors/47.png"),
                  ("Main window icon source 🔗", "https://www.icons8.com/icon/42782/chat")]
         for i in links:
-            button.link(frm_about, i[0], i[1])
+            buttons.Link(i[1], master=frm_about, text=i[0]).pack()
         dev_info = tk.Label(frm_about, text="""Linux test: Linux-5.11.0-27-generic-x86_64-with-glibc2.29
 with Python 3.8.10
 Windows test: Windows-10-10.0.22000-SP0 with Python 3.9.6""", fg="gray", background="white", font=("Noto Mono", 8))
@@ -444,7 +442,7 @@ Windows test: Windows-10-10.0.22000-SP0 with Python 3.9.6""", fg="gray", backgro
         self.window.protocol("WM_DELETE_WINDOW", self.quit_func)
         self.window.update()
 
-        self.menubar = tk.Menu(self.window, activebackground="orange")
+        self.menubar = tk.Menu(self.window, activebackground="orange", borderwidth=0)
         self.window.config(menu=self.menubar)
         self.menubar.add_command(label="Participants", command=self.users)
         self.menubar.add_command(label="Info", command=self.info)
@@ -453,12 +451,12 @@ Windows test: Windows-10-10.0.22000-SP0 with Python 3.9.6""", fg="gray", backgro
         self.menubar.add_command(label="Logging in…", command=self.logout)
 
         frm_messages = tk.Label(master=self.window)
-        scrollbar = tk.Scrollbar(master=frm_messages)
+        scrollbar = tk.Scrollbar(master=frm_messages, borderwidth=0, relief=tk.FLAT)
         self.messages = tk.Listbox(
             master=frm_messages,
             yscrollcommand=scrollbar.set,
             font=("Noto Mono", 10),
-            width=84
+            width=84,
         )
         scrollbar.configure(command=self.messages.yview)
         self.messages.yview(tk.END)
@@ -471,39 +469,14 @@ Windows test: Windows-10-10.0.22000-SP0 with Python 3.9.6""", fg="gray", backgro
 
         random_number = random.randint(0, 3)
         random_phrases = ["Where r u?", "Who am I talking to?", "Let's meet!", "Would u like to know my password?"]
-        # frm_entry = tk.Frame(master=self.window)
-        self.text_input = tk.Entry(master=self.window, font=("Noto Sans", 10), selectbackground="orange",
-                                   highlightbackground="grey", highlightcolor="grey", relief=tk.FLAT)
+        self.text_input = tk.Entry(master=self.window, font=("Noto Sans", 10), highlightbackground="grey",
+                                   selectbackground="orange", relief=tk.FLAT)
         self.text_input.pack(fill=tk.BOTH, expand=True, side="left", padx=15, pady=10)
         self.text_input.insert(0, random_phrases[random_number])
         self.text_input.bind("<Button-1>", lambda x: self.text_input.delete(0, tk.END))
         self.text_input.bind("<Return>", lambda x: self.send())
-
-        btn_attach = tk.Button(
-            master=self.window,
-            text="Attach",
-            command=self.attach,
-            relief=tk.FLAT,
-            font=("Noto Sans", 10),
-            highlightbackground="grey",
-            activebackground="orange",
-            highlightthickness=1
-        )
-
-        btn_send = tk.Button(
-            master=self.window,
-            text="Send",
-            command=self.send,
-            relief=tk.FLAT,
-            font=("Noto Sans", 10),
-            highlightbackground="grey",
-            activebackground="orange",
-            highlightthickness=1
-        )
-        btn_attach.pack(fill=tk.Y, side="left", padx=0, pady=10)
-        btn_send.pack(fill=tk.Y, side="left", padx=15, pady=10)
-        # frm_entry.pack()
-
+        buttons.Button(master=self.window, text="Attach", command=self.attach).pack(fill=tk.Y, side="left", padx=0, pady=10)
+        buttons.Button(master=self.window, text="Send", command=self.send).pack(fill=tk.Y, side="left", padx=15, pady=10)
         self.window.rowconfigure(0, minsize=500, weight=1)
         self.window.rowconfigure(1, minsize=50, weight=0)
         self.window.columnconfigure(0, minsize=500, weight=1)
