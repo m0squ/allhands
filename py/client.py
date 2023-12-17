@@ -32,7 +32,7 @@ class Chatroom:
         self.listbox_ids = []
         self.received_files = []
         self.default_filetypes = (("All files", "*.*"), ("Text files", "*.txt"))
-        self.prog_ver = "1.4.0"
+        self.prog_ver = "1.4.1"
         self.msg_width = 84
         self.window = None
         self.menubar = None
@@ -413,14 +413,10 @@ Python: {sys.version.split()[0]}""")
         frm_about = tk.Frame(about_win, background="white")
         description = tk.Label(frm_about, text=f"""Chat the best you can with the new AllHands {self.prog_ver}
 file sharing system!
-Made with <3 by the What-do-I-know Company""", background="white", font=("Noto Sans", 10))
+Made possible by Simon Jacket and Valerio Mosca""", background="white", font=("Noto Sans", 10))
         description.pack()
-        links = [("GUI inspiration 🔗", "https://www.dev.to/zeyu2001/build-a-chatroom-app-with-python-44fa"), (
-            "Tooltip inspiration 🔗",
-            "https://stackoverflow.com/questions/20399243/display-message-when-hovering-over-something-with-mouse-cursor-in-python#answer-56749167"),
-                 (
-                     "About window icon source 🔗",
-                     "https://anzeljg.github.io/rin2/book2/2405/docs/tkinter/cursors/47.png"),
+        links = [("Source code 🔗", "https://git.owlhosting.cloud/walmartheisenberg/AllHands"),
+                 ("Try also: Domandeio.eu 🔗", "https://domandeio.eu"),
                  ("Main window icon source 🔗", "https://www.icons8.com/icon/42782/chat")]
         for i in links:
             buttons.Link(i[1], master=frm_about, text=i[0]).pack()
