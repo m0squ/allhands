@@ -27,12 +27,12 @@ def access():
         raise AttributeError("Return a json file with the username key when using post on /access!")
     timestamp = time.time()
     if received_user in usernames and timestamp - usernames[received_user] < 10.0:
-        return jsonify({"response": "This username is being used by another participant", "server_ip": None}), 400, {
+        return jsonify({"response": "ma pecche mettet tutt o stess username", "server_ip": None}), 400, {
             "Content-Type": "application/json"}
     else:
         login_usernames[received_user] = timestamp
         usernames[received_user] = timestamp
-        return jsonify({"response": "You had successfully joined the chat",
+        return jsonify({"response": "Si entrat nella chat! Kittemmuorttt!",
                         "server_ip": socket.gethostbyname(socket.gethostname())}), 201, {
                    'Content-Type': 'application/json'}
 
@@ -48,9 +48,9 @@ def heartbit():
     print(received_hb + "^" + str(usernames))
     if received_hb in usernames:
         usernames[received_hb] = time.time()
-        return jsonify({"response": "This user is online"}), 201, {'Content-Type': 'application/json'}
+        return jsonify({"response": "St utente cha la chat appicciata"}), 201, {'Content-Type': 'application/json'}
     else:
-        return jsonify({"response": "Log in to access this session."}), 401, {'Content-Type': 'application/json'}
+        return jsonify({"response": "entra in questa session che t deverti."}), 401, {'Content-Type': 'application/json'}
 
 
 @app.route("/users")
@@ -73,7 +73,7 @@ def msg():
         else:
             raise AttributeError("Send a json file with sender and content keys when using post on /msg!")
         gMessageList.append(received_message)
-        if data["content"] == "> ❌ Goodbye! I left the chat <" and data["type"] == "info":
+        if data["content"] == "> ❌ ciao stronzi! me ne vac <" and data["type"] == "info":
             usernames.pop(data["sender"])
         # return json.dumps(received_message.serialize, ensure_ascii=False).encode('utf8')
         return jsonify(received_message.serialize), 201, {'Content-Type': 'application/json'}
@@ -95,7 +95,7 @@ def msg_from_id():
         if msg:
             return jsonify(msg, 201, {"Content-Type": "application/json"})
         else:
-            return jsonify({"response": "Message not found."}), 404, {'Content-Type': 'application/json'}
+            return jsonify({"response": "nun lagg truvat."}), 404, {'Content-Type': 'application/json'}
 
 
 @app.route("/upload-file", methods=["POST"])
@@ -107,7 +107,7 @@ def upload_file():
     file.save(filepath)
     #gFilenames.append(filename)
     gFileData.append(File(data["sender"], data["filename"]))
-    return jsonify({"response": "File uploaded to the server."}), 201, {"Content-Type": "application/json"}
+    return jsonify({"response": "caricat ngoppa o server."}), 201, {"Content-Type": "application/json"}
 
 
 """@app.route("/filenames")
@@ -121,9 +121,9 @@ def download_file():
     data = request.get_json()
     for i in gFileData:
         if i.filename == data["filename"]:
-            return send_file(f'{uploads_dir}/{i.filename}', as_attachment=True, attachment_filename=i.filename)
+            return send_file(f'{uploads_dir}/{i.filename}', as_attachment=True)
     else:
-        return jsonify({"response": "The file specified doesn't exist."}), 404, {"Content-Type": "application/json"}
+        return jsonify({"response": "stu cazz e file n'esiste."}), 404, {"Content-Type": "application/json"}
 
 
 @app.route("/file-data")

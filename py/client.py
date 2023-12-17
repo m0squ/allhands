@@ -32,7 +32,7 @@ class Chatroom:
         self.listbox_ids = []
         self.received_files = []
         self.default_filetypes = (("All files", "*.*"), ("Text files", "*.txt"))
-        self.prog_ver = "1.3.0"
+        self.prog_ver = "1.4.0"
         self.msg_width = 84
         self.window = None
         self.menubar = None
@@ -202,7 +202,7 @@ class Chatroom:
             self.online = False
 
     def recv_msg(self):
-        inbox = requests.get("http://" + self.server_ip + ":" + str(self.port) + "/msg")
+        inbox = requests.get("http://" + self.ip + ":" + str(self.port) + "/msg")
         if inbox.status_code == 200:
             if not self.online:
                 self.online = True
@@ -233,7 +233,7 @@ class Chatroom:
             self.mk_offline_recv("it responded to GET /msg with a status of " + str(inbox.status_code))
 
     def recv_files(self):
-        file_data_req = requests.get(f"http://{self.server_ip}:{str(self.port)}/file-data")
+        file_data_req = requests.get(f"http://{self.ip}:{str(self.port)}/file-data")
         n = 0
         for i in file_data_req.json():
             sender = i["sender"]
@@ -242,7 +242,7 @@ class Chatroom:
             if sender != self.username and not filename in self.received_files:
                 self.received_files.append(filename)
                 file_msg = {"filename": filename}
-                file_req = requests.post(f"http://{self.server_ip}:{str(self.port)}/download-file", json=file_msg)
+                file_req = requests.post(f"http://{self.ip}:{str(self.port)}/download-file", json=file_msg)
                 file = open(f"./media/{filename}", "wb")
                 file.write(file_req.content)
                 file.close()
@@ -255,7 +255,7 @@ class Chatroom:
             if not self.stop_thread:
                 try:
                     hb_msg = {"username": self.username}
-                    hb_req = requests.post("http://" + self.server_ip + ":" + str(self.port) + "/heartbit", json=hb_msg)
+                    hb_req = requests.post("http://" + self.ip + ":" + str(self.port) + "/heartbit", json=hb_msg)
                     self.recv_msg()
                     self.recv_files()
                 except requests.exceptions.ConnectionError:
@@ -276,7 +276,7 @@ class Chatroom:
         self.messages.insert(tk.END, send_msg["content"])
         print("error: the server didn't respond correctly: " + details)
 
-    def send(self, show=True, content=None, info=False):
+    def send(self, show=True, content=None, info=False, file=None):
         timestamp = self.s_to_time(time.time())
         if content is None:
             content = self.text_input.get()
@@ -289,7 +289,7 @@ class Chatroom:
                 if show:
                     self.show_msg(self.username, timestamp, content)
             try:
-                send_req = requests.post("http://" + self.server_ip + ":" + str(self.port) + "/msg", json=send_msg)
+                send_req = requests.post("http://" + self.ip + ":" + str(self.port) + "/msg", json=send_msg)
                 if show and send_req.status_code != 201:
                     self.mk_offline_send(f"it responded with a status of {send_req.status_code}", send_msg)
             except requests.exceptions.ConnectionError as e:
@@ -304,7 +304,7 @@ class Chatroom:
             file = open(filename, "rb")
             # self.send(file={"name": filename, "content": content})
             try:
-                attach_req = requests.post(f"http://{self.server_ip}:{str(self.port)}/upload-file",
+                attach_req = requests.post(f"http://{self.ip}:{str(self.port)}/upload-file",
                                            files={"file": file, "json": ('{"sender": "%s", "filename": "%s"}' % (
                                            self.username, filename.split("/")[-1].split("\\")[-1])).encode("latin-1")},
                                            data={'upload_file': filename.split("/")[-1].split("\\")[-1],
@@ -345,7 +345,7 @@ class Chatroom:
             print("Warning: One or more messages are missing from Chatroom.msg_json or self.listbox_ids")"""
 
     def users(self):
-        users_req = requests.get("http://" + self.server_ip + ":" + str(self.port) + "/users")
+        users_req = requests.get("http://" + self.ip + ":" + str(self.port) + "/users")
         if users_req.status_code == 200:
             data = users_req.json()
             n = 0
@@ -392,7 +392,7 @@ class Chatroom:
             info.config(height=5)
             info.insert(1.0, "Connected Network: " + str(self.wifi) + "\n")
         info.insert(2.0, f"""Your IP: {socket.gethostbyname(socket.gethostname())}
-Server address: http://{self.server_ip}:{self.port}
+Server address: http://{self.ip}:{self.port}
 Your OS: {platform.platform()}
 Python: {sys.version.split()[0]}""")
         info.grid()
@@ -402,7 +402,7 @@ Python: {sys.version.split()[0]}""")
         about_win.group(self.window)
         about_win.grab_set()
         about_win.title("About AllHands")
-        about_win.tk.call('wm', 'iconphoto', about_win._w, tk.PhotoImage(file="../img/about.png"))
+        about_win.tk.call('wm', 'iconphoto', about_win._w, tk.PhotoImage(file="../img/icon.png"))
         about_win.resizable(width=False, height=False)
         about_win.configure(background="white")
         about_win.update()
